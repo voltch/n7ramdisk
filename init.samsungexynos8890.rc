@@ -6,6 +6,7 @@ import init.gps.rc
 import init.fac.rc
 import init.exynos8890_fac.rc
 import init.remove_recovery.rc
+import init.carrier.rc
 
 on early-init
     mount debugfs /sys/kernel/debug /sys/kernel/debug
@@ -71,8 +72,10 @@ on post-fs-data
     chown system radio /sys/class/camera/rear/rear_calcheck
     chown system radio /sys/class/camera/rear/isp_core
     chown system radio /sys/class/camera/rear/fw_update
+    chown system radio /sys/class/camera/rear/companion_ic_check
+    chown system radio /sys/class/camera/rear/rear_moduleid
     chown system radio /sys/class/camera/flash/rear_flash
-    chown media system /sys/class/camera/flash/torch_flash
+    chown media system /sys/class/camera/flash/rear_torch_flash
     chown system radio /sys/class/camera/front/front_camfw
     chown system radio /sys/class/camera/front/front_camfw_full
     chown system radio /sys/class/camera/front/front_checkfw_factory
@@ -83,6 +86,10 @@ on post-fs-data
     chown system radio /sys/class/camera/ois/oisfw
     chown system radio /sys/class/camera/ois/ois_diff
     chown system radio /sys/class/camera/ois/autotest
+    chown system radio /sys/class/camera/secure/iris_camfw
+    chown system radio /sys/class/camera/secure/iris_camfw_full
+    chown system radio /sys/class/camera/secure/iris_checkfw_factory
+    chown system radio /sys/class/camera/secure/iris_checkfw_user
 
 # SVC LED
     chown system system /sys/class/sec/led/led_r
@@ -111,16 +118,22 @@ on post-fs-data
     chown system radio /sys/class/power_supply/battery/batt_self_discharging_control
     chown system radio /sys/class/power_supply/battery/batt_inbat_wireless_cs100
 
-#Private Mode
-    mkdir /mnt/shell/privatemode 0700 system system
-    mkdir /storage/Private 0000 system system
-    mkdir /data/privatemode 0770 system system
-    chown system system /data/privatemode
-    restorecon /data/privatemode
+# Iris
+    mkdir /data/bio 0770 system system
+    mkdir /data/bio/ir 0770 system system
 
 # /efs/factory.prop for Dual / Single SIM settings
     chown radio radio /efs/factory.prop
     chmod 0600 /efs/factory.prop
+
+# Permissions for NAD
+    symlink /dev/block/platform/155a0000.ufs/by-name/NAD_REFER /dev/block/NAD_REFER
+    chown system radio /sys/class/sec/sec_nad/nad_stat
+    chmod 0664 /sys/class/sec/sec_nad/nad_stat
+    chown system radio /sys/class/sec/sec_nad/nad_erase
+    chmod 0664 /sys/class/sec/sec_nad/nad_erase
+    chown system radio /dev/block/NAD_REFER
+    chmod 0664 /dev/block/NAD_REFER
 
 on boot
     # override init.rc to keep plenty of large order chunks around
@@ -129,7 +142,7 @@ on boot
     # write /proc/sys/vm/min_free_order_shift 1
 
 # SSWAP
-    write /proc/sys/vm/swappiness 190
+    write /proc/sys/vm/swappiness 180
 
     # Allow to access debugfs for system:system
     chmod 755 /sys/kernel/debug
@@ -139,6 +152,13 @@ on boot
     chmod 0222 /sys/kernel/debug/tracing/trace_marker
     write /sys/kernel/debug/tracing/tracing_on 0
 
+    # PMS DVFS
+    chown system system /sys/power/cpuhotplug/enabled
+    chown system system /sys/power/cpuhotplug/min_online_cpu
+    chown system system /sys/power/cpuhotplug/max_online_cpu
+    chmod 0664 /sys/power/cpuhotplug/enabled
+    chmod 0664 /sys/power/cpuhotplug/min_online_cpu
+    chmod 0664 /sys/power/cpuhotplug/max_online_cpu
 
     chown radio system /sys/devices/17000010.devfreq_mif/devfreq/17000010.devfreq_mif/available_frequencies
     chmod 0664 /sys/devices/17000010.devfreq_mif/devfreq/17000010.devfreq_mif/available_frequencies
@@ -171,8 +191,6 @@ on boot
     chmod 0664 /sys/devices/14ac0000.mali/dvfs_min_lock
     chown radio system /sys/devices/14ac0000.mali/dvfs_max_lock
     chmod 0664 /sys/devices/14ac0000.mali/dvfs_max_lock
-
-
 
     chown radio system /sys/devices/system/sec_os_ctrl/migrate_os
     chmod 664 /sys/devices/system/sec_os_ctrl/migrate_os
@@ -209,10 +227,6 @@ on boot
     # Assume HMP uses shared cpufreq policy for all LITTLE CPUs
     chown system system /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq
     chmod 0660 /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq
-
-    # Assume HMP uses shared cpufreq policy for all BIG CPUs
-    chown system system /sys/devices/system/cpu/cpu4/cpufreq/scaling_max_freq
-    chmod 0660 /sys/devices/system/cpu/cpu4/cpufreq/scaling_max_freq
 
     chown system system sys/devices/system/cpu/cpufreq/mp-cpufreq/cluster0_max_freq
     chmod 0660 sys/devices/system/cpu/cpufreq/mp-cpufreq/cluster0_max_freq
@@ -272,6 +286,8 @@ on boot
 
 # Switch Device
     chown system radio /sys/class/sec/switch/afc_disable
+    chown system radio /sys/class/sec/switch/afc_set_voltage
+    chown system radio /sys/class/sec/switch/vbus_value
 
 #for datarouter
     chown system system /dev/dun
@@ -279,6 +295,11 @@ on boot
     chown system system /dev/ttyGS1
     chown system system /dev/ttyGS2
     chown system system /dev/ttyGS3
+
+# LPM mode for ccic
+    chown system radio /sys/class/sec/ccic/lpm_mode
+    chown system radio /sys/class/sec/ccic/ccic_control_option
+    chown system radio /sys/class/sec/ccic/fw_update
 
 # DRK permission
     mkdir /efs/prov 0770 radio system
@@ -307,17 +328,13 @@ on boot
     chown system system /efs/FactoryApp/a2_line.dat
     chmod 0640 /efs/FactoryApp/a2_line.dat
 
-
-# IPSec for VOLTE
-    chown root system /dev/socket
-    chmod 0775 /dev/socket
-
-# IPSec for VOLTE
-service ipsec-daemon /system/bin/IPSecService
+# New IMS Stack
+service imsd /system/bin/imsd
     class main
-    socket ipsec_socket stream 660 system net_admin
-    user system
-    group system net_raw inet net_admin
+    socket imsd stream 0660 system system
+    socket sme_socket stream 0660 system system
+    user root
+    group system radio net_raw inet net_admin
 
 on fs
     mount_all /fstab.samsungexynos8890
@@ -349,6 +366,18 @@ on fs
     chown system radio /sys/class/sec/sec_touchkey/keyboard_mode
     chown system system /sys/class/sec/sec_touchkey/input/enabled
 
+# Permissions for epen
+    chown system radio /sys/class/sec/sec_epen/epen_firm_update
+    chown system radio /sys/class/sec/sec_epen/epen_reset
+    chown system radio /sys/class/sec/sec_epen/epen_reset_result
+    chown system radio /sys/class/sec/sec_epen/epen_checksum
+    chown system radio /sys/class/sec/sec_epen/epen_checksum_result
+    chown system radio /sys/class/sec/sec_epen/epen_saving_mode
+    chown system radio /sys/class/sec/sec_epen/epen_wcharging_mode
+    chown system radio /sys/class/sec/sec_epen/epen_disable_mode
+    chown system radio /sys/class/sec/sec_epen/epen_aop_mode
+    chown system system /sys/class/sec/sec_epen/input/enabled
+
 # Permissions for gpio_keys
     chown radio system /sys/class/sec/sec_key/wakeup_keys
     write /sys/class/sec/sec_key/wakeup_keys 116,172
@@ -357,19 +386,22 @@ on fs
     chown system radio /sys/class/input_booster/level
     chown system radio /sys/class/input_booster/head
     chown system radio /sys/class/input_booster/tail
+    chown system radio /sys/class/input_booster/touchkey/level
+    chown system radio /sys/class/input_booster/touchkey/freq
+    chown system radio /sys/class/input_booster/touchkey/time
     chmod 0664 /sys/class/input_booster/level
     chmod 0664 /sys/class/input_booster/head
     chmod 0664 /sys/class/input_booster/tail
+    chmod 0664 /sys/class/input_booster/touchkey/level
+    chmod 0664 /sys/class/input_booster/touchkey/freq
+    chmod 0664 /sys/class/input_booster/touchkey/time
 
 # Permissions for ION
     chmod 0660 /sys/class/ion_cma/ion_video_ext/isolated
     chown system system /sys/class/ion_cma/ion_video_ext/isolated
 
 # Permissions for backlight
-    chmod 0660 /sys/class/backlight/panel/brightness
     chown system system /sys/class/backlight/panel/brightness
-    chown system system /sys/class/backlight/panel/auto_brightness
-    chown system system /sys/class/backlight/panel/auto_brightness_level
     chown system system /sys/class/backlight/panel/weakness_ccb
 
 # Permissions for LCD HMT
@@ -386,16 +418,17 @@ on fs
     chown system system /sys/class/lcd/panel/siop_enable
     chown system system /sys/class/lcd/panel/temperature
     chown system radio /sys/class/lcd/panel/mcd_mode
-    chown system media_rw /sys/class/backlight/panel/weakness_hbm_comp
-    chown system system /sys/class/lcd/panel/ldu_correction
+    chown system system /sys/class/lcd/panel/lux
+    chown system media_rw /sys/class/lcd/panel/adaptive_control
 
 # Permissions for MDNIE
     chown system media_rw /sys/class/mdnie/mdnie/mode
     chown system media_rw /sys/class/mdnie/mdnie/scenario
     chown system system /sys/class/mdnie/mdnie/accessibility
-    chown system system /sys/class/mdnie/mdnie/auto_brightness
     chown system system /sys/class/mdnie/mdnie/sensorRGB
     chown system system /sys/class/mdnie/mdnie/mdnie_ldu
+    chown system system /sys/class/mdnie/mdnie/night_mode
+    chown system system /sys/class/mdnie/mdnie/hdr
 
 # Permissions for System LSI NFC
 # NFC : Permissions for NFC
@@ -432,6 +465,8 @@ on fs
     chown system radio /sys/class/fingerprint/fingerprint/type_check
     chown system radio /sys/class/fingerprint/fingerprint/name
     chown system radio /sys/class/fingerprint/fingerprint/vendor
+    chown system radio /sys/class/fingerprint/fingerprint/adm
+    chown system radio /sys/class/fingerprint/fingerprint/retain_pin
 
 # Accelerometer_sensor
     chown system radio /sys/class/sensors/accelerometer_sensor/raw_data
@@ -443,24 +478,49 @@ on fs
     chown system radio /sys/class/sensors/accelerometer_sensor/lowpassfilter
 
 # Proximity_sensor
-    chown system radio /sys/class/sensors/proximity_sensor/state
     chown system radio /sys/class/sensors/proximity_sensor/raw_data
     chown system radio /sys/class/sensors/proximity_sensor/prox_avg
-    chown system radio /sys/class/sensors/proximity_sensor/prox_cal
     chown system radio /sys/class/sensors/proximity_sensor/vendor
     chown system radio /sys/class/sensors/proximity_sensor/name
     chown system radio /sys/class/sensors/proximity_sensor/thresh_high
     chown system radio /sys/class/sensors/proximity_sensor/thresh_low
+    chown system radio /sys/class/sensors/proximity_sensor/thresh_detect_high
+    chown system radio /sys/class/sensors/proximity_sensor/thresh_detect_low
     chown system radio /sys/class/sensors/proximity_sensor/barcode_emul_en
     chown system radio /sys/class/sensors/proximity_sensor/prox_offset_pass
     chown system radio /sys/class/sensors/proximity_sensor/prox_trim
     chown system radio /sys/class/sensors/proximity_sensor/prox_probe
+    chown system radio /sys/class/sensors/proximity_sensor/prox_alert_thresh
 
 # Light_sensor
     chown system radio /sys/class/sensors/light_sensor/lux
     chown system radio /sys/class/sensors/light_sensor/raw_data
     chown system radio /sys/class/sensors/light_sensor/vendor
     chown system radio /sys/class/sensors/light_sensor/name
+    chown system radio /sys/class/sensors/light_sensor/coef
+
+# Hidden_hole
+    chown system radio /sys/class/sensors/hidden_hole/hh_is_exist_efs
+    chown system radio /sys/class/sensors/hidden_hole/hh_ver
+    chown system radio /sys/class/sensors/hidden_hole/hh_write_all_data
+    chown system radio /sys/class/sensors/hidden_hole/hh_check_coef
+    chown system radio /efs/FactoryApp/version
+    chown system radio /efs/FactoryApp/predefine0
+    chown system radio /efs/FactoryApp/predefine1
+    chown system radio /efs/FactoryApp/predefine2
+    chown system radio /efs/FactoryApp/predefine3
+    chown system radio /efs/FactoryApp/predefine4
+    chown system radio /efs/FactoryApp/predefine5
+    chown system radio /efs/FactoryApp/predefine6
+    chown system radio /efs/FactoryApp/predefine7
+    chown system radio /efs/FactoryApp/predefine8
+    chown system radio /efs/FactoryApp/predefine9
+    chown system radio /efs/FactoryApp/predefine10
+    chown system radio /efs/FactoryApp/predefine11
+    chown system radio /efs/FactoryApp/predefine12
+    chown system radio /efs/FactoryApp/predefine13
+    chown system radio /efs/FactoryApp/predefine14
+    chown system radio /efs/FactoryApp/predefine15
 
 # Gyro_sensor
     chown system radio /sys/class/sensors/gyro_sensor/power_on
@@ -578,6 +638,7 @@ on fs
     chown system radio /sys/class/sensors/ssp_sensor/uncal_gyro_poll_delay
     chown system radio /sys/class/sensors/ssp_sensor/interrupt_gyro_poll_delay
     chown system radio /sys/class/sensors/ssp_sensor/ssp_flush
+    chown system radio /sys/class/sensors/ssp_sensor/sensor_state
 
  # MOBEAM
     chown system radio /sys/class/sec/sec_barcode_emul/vendor
@@ -588,12 +649,6 @@ on fs
 
 # Meta event
     chown system radio /sys/class/sensors/sensor_dev/flush
-
-# IRLED_sensor
-    chown system radio /sys/class/sensors/irled_remote/name
-    chown system radio /sys/class/sensors/irled_remote/vendor
-    chown system radio /sys/class/sensors/irled_remote/irled_send
-    chown system radio /sys/class/sensors/irled_remote/irled_send_result
 
 # DATA_INJECTION
 	chown system radio /sys/class/sensors/ssp_sensor/data_injection_enable
@@ -667,7 +722,6 @@ on property:ro.debuggable=1
 # LPM
 on property:ro.bootmode=charger
     mount ext4 /dev/block/platform/155a0000.ufs/by-name/SYSTEM /system support_scfs wait ro
-    mount f2fs /dev/block/platform/155a0000.ufs/by-name/SYSTEM /system wait ro
 
 on property:ro.bootmode=charger
     wait /dev/block/platform/155a0000.ufs/by-name/EFS
@@ -726,21 +780,6 @@ on property:ro.multisim.simslotcount=2
 	user gps
 	group system inet
 
-# emergency firmware update
-on firmware
-    mount_all /fstab.samsungexynos8890.fwup
-    class_start firmware_update
-
-# Emergency Firmware Update
-service fwup /sbin/ffu -a
-    class firmware_update
-    user root
-    group root
-    seclabel u:r:ffu:s0
-    critical
-    oneshot
-
-
 # SecEDS
 service TvoutService_C /system/bin/bintvoutservice
     class main
@@ -756,3 +795,11 @@ service swapon /sbin/sswap -s -f 2048
     group root
     seclabel u:r:sswap:s0
     oneshot
+
+# Improve buffered write performance
+on property:sys.boot_completed=1
+    write /sys/block/sda/queue/nr_requests 256
+    write /proc/sys/vm/dirty_ratio 25
+    write /proc/sys/vm/dirty_background_ratio 5
+# HW FLP property
+    setprop ro.location.hwflp false

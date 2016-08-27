@@ -28,7 +28,6 @@ on post-fs-data
     chmod 0666 /data/.wifiver.info
 
     # for WIFI MEMDUMP
-    write /data/.memdump.info 0
     chown system root /data/.memdump.info
     chmod 0666 /data/.memdump.info
 

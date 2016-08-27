@@ -116,8 +116,6 @@
 /dev/uhid		u:object_r:uhid_device:s0
 /dev/uinput		u:object_r:uhid_device:s0
 /dev/uio[0-9]*		u:object_r:uio_device:s0
-/dev/erandom		u:object_r:urandom_device:s0
-/dev/frandom		u:object_r:random_device:s0
 /dev/urandom		u:object_r:urandom_device:s0
 /dev/usb_accessory	u:object_r:usbaccessory_device:s0
 /dev/vcs[0-9a-z]*	u:object_r:vcs_device:s0
@@ -1257,6 +1255,9 @@
 /dev/timerirq	u:object_r:timerirq_device:s0
 /dev/ttyGS[0-9]*	u:object_r:usb_serial_device:s0
 /dev/ttyUSB[0-9]*	u:object_r:usb_device:s0
+# SEA_site_M#92; requested by jh21.hwang
+# the B2B client requests some specific path range such as /dev/ttyUSB0 ~ /dev/ttyUSB30, /dev/ttyACM0 ~ /dev/ttyACM30
+/dev/ttyACM[0-9]*	u:object_r:usb_device:s0
 /dev/t-base-tui                    u:object_r:tui_device:s0
 /dev/tuihw	u:object_r:tz_device:s0
 /dev/tzdev	u:object_r:tz_device:s0
